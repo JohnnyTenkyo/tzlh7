@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ai_configs` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `provider` varchar(50) NOT NULL, `apiEndpoint` varchar(500) NOT NULL, `apiKey` varchar(500) NOT NULL, `model` varchar(100) NOT NULL, `isActive` boolean DEFAULT true, `createdAt` timestamp NOT NULL DEFAULT (now()), `updatedAt` timestamp DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `ai_configs_id` PRIMARY KEY(`id`), CONSTRAINT `idx_user_provider` UNIQUE(`userId`,`provider`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2em4J7dAX6b1M5C.root --database cRVUsjtTPC8svURVCxYPrb --execute CREATE TABLE IF NOT EXISTS `ai_configs` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `provider` varchar(50) NOT NULL, `apiEndpoint` varchar(500) NOT NULL, `apiKey` varchar(500) NOT NULL, `model` varchar(100) NOT NULL, `isActive` boolean DEFAULT true, `createdAt` timestamp NOT NULL DEFAULT (now()), `updatedAt` timestamp DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `ai_configs_id` PRIMARY KEY(`id`), CONSTRAINT `idx_user_provider` UNIQUE(`userId`,`provider`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 259
+}

@@ -1,5 +1,27 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1777369835666,
+      "tag": "0000_sparkling_master_mold",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1777371584049,
+      "tag": "0001_glossy_johnny_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1777372091910,
+      "tag": "0002_melted_eternals",
+      "breakpoints": true
+    }
+  ]
 }

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `backtest_trades` (`id` int AUTO_INCREMENT NOT NULL, `sessionId` int NOT NULL, `symbol` varchar(20) NOT NULL, `side` enum('buy','sell') NOT NULL, `quantity` decimal(15,4) NOT NULL, `price` decimal(15,4) NOT NULL, `totalAmount` decimal(15,2) NOT NULL, `fee` decimal(10,4) DEFAULT '0', `commissionFee` decimal(15,2) DEFAULT '0', `platformFee` decimal(15,2) DEFAULT '0', `reason` text, `signalType` varchar(50), `tradeTime` bigint NOT NULL, `pnl` decimal(15,2), `pnlPct` decimal(10,4), `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `backtest_trades_id` PRIMARY KEY(`id`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2em4J7dAX6b1M5C.root --database cRVUsjtTPC8svURVCxYPrb --execute CREATE TABLE IF NOT EXISTS `backtest_trades` (`id` int AUTO_INCREMENT NOT NULL, `sessionId` int NOT NULL, `symbol` varchar(20) NOT NULL, `side` enum('buy','sell') NOT NULL, `quantity` decimal(15,4) NOT NULL, `price` decimal(15,4) NOT NULL, `totalAmount` decimal(15,2) NOT NULL, `fee` decimal(10,4) DEFAULT '0', `commissionFee` decimal(15,2) DEFAULT '0', `platformFee` decimal(15,2) DEFAULT '0', `reason` text, `signalType` varchar(50), `tradeTime` bigint NOT NULL, `pnl` decimal(15,2), `pnlPct` decimal(10,4), `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `backtest_trades_id` PRIMARY KEY(`id`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 114
+}

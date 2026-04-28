@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `watchlist` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `symbol` varchar(20) NOT NULL, `name` varchar(100), `alertThreshold` int DEFAULT 80, `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `watchlist_id` PRIMARY KEY(`id`), CONSTRAINT `watchlist_user_symbol` UNIQUE(`userId`,`symbol`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2em4J7dAX6b1M5C.root --database cRVUsjtTPC8svURVCxYPrb --execute CREATE TABLE IF NOT EXISTS `watchlist` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `symbol` varchar(20) NOT NULL, `name` varchar(100), `alertThreshold` int DEFAULT 80, `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `watchlist_id` PRIMARY KEY(`id`), CONSTRAINT `watchlist_user_symbol` UNIQUE(`userId`,`symbol`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 109
+}
