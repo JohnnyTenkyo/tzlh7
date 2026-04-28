@@ -1080,14 +1080,8 @@ export const appRouter = router({
       let dateStr = todayStr;
       let isYesterdayData = false;
       
-      // Check if today's scan task has completed
-      const [todayTaskLog] = await db.execute(
-        `SELECT executedAt, success FROM system_task_log WHERE taskName = 'daily-scan' AND DATE(executedAt) = CURDATE() ORDER BY executedAt DESC LIMIT 1`
-      ) as any;
-      const todayTaskCompleted = todayTaskLog?.[0]?.success === 1;
-      
-      // If today's scan hasn't completed yet, fallback to yesterday
-      if (!todayTaskCompleted || rows.length === 0) {
+      // If today has no data, fallback to yesterday
+      if (rows.length === 0) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
@@ -1239,14 +1233,8 @@ export const appRouter = router({
         let dateStr = todayStr;
         let isYesterdayData = false;
         
-        // Check if today's scan task has completed
-        const [todayTaskLog2] = await db.execute(
-          `SELECT executedAt, success FROM system_task_log WHERE taskName = 'daily-scan' AND DATE(executedAt) = CURDATE() ORDER BY executedAt DESC LIMIT 1`
-        ) as any;
-        const todayTaskCompleted2 = todayTaskLog2?.[0]?.success === 1;
-        
-        // If today's scan hasn't completed yet, fallback to yesterday
-        if (!todayTaskCompleted2 || rows.length === 0) {
+        // If today has no data, fallback to yesterday
+        if (rows.length === 0) {
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
           const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;

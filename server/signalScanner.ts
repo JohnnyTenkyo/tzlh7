@@ -321,22 +321,8 @@ export async function getTodayTopSignals(
     .orderBy(desc(scanResults.score))
     .limit(strategy ? limit : limit * 8);
 
-  // Check if today's scan task has completed
-  const dbConn = await getDb();
-  let todayTaskCompleted = false;
-  if (dbConn) {
-    try {
-      const [todayTaskLog] = await dbConn.execute(
-        `SELECT executedAt, success FROM system_task_log WHERE taskName = 'daily-scan' AND DATE(executedAt) = CURDATE() ORDER BY executedAt DESC LIMIT 1`
-      ) as any;
-      todayTaskCompleted = todayTaskLog?.[0]?.success === 1;
-    } catch (err) {
-      // If query fails, assume not completed
-    }
-  }
-  
-  // If today's scan hasn't completed yet, fallback to yesterday
-  if (!todayTaskCompleted || rows.length === 0) {
+  // If today has no data, fallback to yesterday
+  if (rows.length === 0) {
     const yesterday = getYesterdayDate();
     rows = await db.select().from(scanResults)
       .where(

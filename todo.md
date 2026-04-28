@@ -38,3 +38,8 @@
 - [x] 单元测试全部通过（11个测试）
 - [x] 保存 checkpoint
 - [ ] 用户点击 Publish 按钮发布到 manus.space
+
+## 后续修复（v2）
+- [x] 修复扫描结果不显示：getResults/todaySummary/getTodayTopSignals 中移除 system_task_log 依赖，改为直接检查今天是否有数据
+- [ ] 全量缓存778只股票（进行中）
+- [ ] 全量扫描验证
