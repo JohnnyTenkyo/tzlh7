@@ -41,5 +41,5 @@
 
 ## 后续修复（v2）
 - [x] 修复扫描结果不显示：getResults/todaySummary/getTodayTopSignals 中移除 system_task_log 依赖，改为直接检查今天是否有数据
-- [ ] 全量缓存778只股票（进行中）
-- [ ] 全量扫描验证
+- [x] 全量缓存778只股票（已完成，每只约2511根K线）
+- [x] 全量扫描验证（2156个信号，INTC/AMD等100分）
