@@ -326,3 +326,43 @@ export const watchlist = mysqlTable("watchlist", {
 ]);
 export type Watchlist = typeof watchlist.$inferSelect;
 export type InsertWatchlist = typeof watchlist.$inferInsert;
+
+// ============================================================
+// Market Cap Cache (市值缓存 - 定期更新)
+// ============================================================
+export const marketCapCache = mysqlTable("market_cap_cache", {
+  id: int("id").autoincrement().primaryKey(),
+  symbol: varchar("symbol", { length: 20 }).notNull().unique(),
+  marketCap: bigint("marketCap", { mode: "number" }), // in USD (亿美元)
+  currency: varchar("currency", { length: 10 }).default("USD"),
+  source: varchar("source", { length: 50 }).notNull(), // "finnhub", "alphavantage", etc.
+  lastUpdated: timestamp("lastUpdated").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("idx_symbol").on(table.symbol),
+  index("idx_source").on(table.source),
+  index("idx_last_updated").on(table.lastUpdated),
+]);
+
+export type MarketCapCache = typeof marketCapCache.$inferSelect;
+export type InsertMarketCapCache = typeof marketCapCache.$inferInsert;
+
+// ============================================================
+// Market Cap Update Log (市值更新日志)
+// ============================================================
+export const marketCapUpdateLog = mysqlTable("market_cap_update_log", {
+  id: int("id").autoincrement().primaryKey(),
+  updateDate: varchar("updateDate", { length: 10 }).notNull(), // YYYY-MM-DD
+  totalSymbols: int("totalSymbols").notNull(),
+  successCount: int("successCount").notNull(),
+  failureCount: int("failureCount").notNull(),
+  source: varchar("source", { length: 50 }).notNull(), // "finnhub", "alphavantage"
+  errorLog: text("errorLog"), // JSON array of failed symbols
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("idx_update_date").on(table.updateDate),
+  index("idx_source").on(table.source),
+]);
+
+export type MarketCapUpdateLog = typeof marketCapUpdateLog.$inferSelect;
+export type InsertMarketCapUpdateLog = typeof marketCapUpdateLog.$inferInsert;

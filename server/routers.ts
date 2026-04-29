@@ -25,6 +25,7 @@ import { notifyOwner } from "./_core/notification";
 import { dataSourcePriorityRouter } from "./routers/dataSourcePriority";
 const removedFailedSymbols = new Set<string>();
 import { scanHistoryRouter } from "./routers/scanHistory";
+import { marketCapRouter } from "./routers/marketCap";
 
 function getJwtSecret() {
   return new TextEncoder().encode(ENV.cookieSecret);
@@ -475,6 +476,10 @@ export const appRouter = router({
         const pct = ['stopLossPct', 'takeProfitPct', 'trailingStopPct'];
         if (pct.includes(key) && typeof value === 'number') return `${(value * 100).toFixed(1)}%`;
         if (key === 'maxHoldingDays' && value === 0) return '不限';
+        if (typeof value === 'object') {
+          if (Array.isArray(value)) return value.join(', ');
+          try { return JSON.stringify(value, null, 2); } catch { return String(value); }
+        }
         return String(value);
       };
       if (session.strategyParams) {
@@ -684,6 +689,7 @@ export const appRouter = router({
 
   dataSourcePriority: router(dataSourcePriorityRouter),
   scanHistory: router(scanHistoryRouter),
+  marketCap: marketCapRouter,
   cache: router({
     status: publicProcedure.query(async () => {
       const status = await getCacheStatus();

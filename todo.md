@@ -50,3 +50,12 @@
 - [x] 增强 Excel 导出：确保策略参数正确转换和显示
 - [x] 修复前端对比模式参数转换：添加 buildCompareBackendParams 函数确保百分比参数正确转换
 - [x] 添加 18 个单元测试验证所有修复（全部通过）
+
+
+## 当前会话新增任务
+- [x] 修复 Excel 导出参数乱码：策略特有参数显示为 [object Object]，需要格式化为中文标签
+- [x] 创建市值数据更新系统：数据库表存储市值、更新时间等信息
+- [x] 实施 Finnhub API 批量获取市值：使用 /company-profile2 端点获取 marketCapitalization
+- [x] 实施 AlphaVantage API 备用方案：作为 Finnhub 的备用数据源（使用 OVERVIEW 端点）
+- [x] 测试市值更新功能：新增 22 个单元测试全部通过（总计 40 个测试）
+- [ ] 创建后台定期更新任务：每天或每周更新所有股票的市值数据
