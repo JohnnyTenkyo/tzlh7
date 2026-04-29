@@ -58,4 +58,4 @@
 - [x] 实施 Finnhub API 批量获取市值：使用 /company-profile2 端点获取 marketCapitalization
 - [x] 实施 AlphaVantage API 备用方案：作为 Finnhub 的备用数据源（使用 OVERVIEW 端点）
 - [x] 测试市值更新功能：新增 22 个单元测试全部通过（总计 40 个测试）
-- [ ] 创建后台定期更新任务：每天或每周更新所有股票的市值数据
+- [x] 创建后台定期更新任务：每天 06:00 UTC 更新所有股票的市值数据（批量处理、限流控制、错误通知）

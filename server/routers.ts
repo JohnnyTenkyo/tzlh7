@@ -1489,3 +1489,14 @@ export async function handleDailyCacheScheduled(): Promise<{ success: boolean; m
     return { success: false, message: msg, stats: {} };
   }
 }
+
+
+/**
+ * Scheduled task handler for daily market cap data update.
+ * Called by the Manus scheduled task agent via POST /api/scheduled/market-cap-update
+ * Runs at 06:00 UTC (14:00 Beijing time) daily.
+ */
+export async function handleMarketCapScheduledUpdate(): Promise<{ success: boolean; message: string; stats: any }> {
+  const { handleMarketCapScheduledUpdate: updateMarketCap } = await import("./routers/scheduledMarketCapUpdate");
+  return updateMarketCap();
+}
