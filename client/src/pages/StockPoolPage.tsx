@@ -159,7 +159,7 @@ export default function StockPoolPage() {
                             : stock.marketCap >= 1e9
                             ? `$${(stock.marketCap / 1e9).toFixed(1)}B`
                             : `$${(stock.marketCap / 1e6).toFixed(0)}M`
-                          : "-"}
+                          : "未知"}
                       </td>
                       <td className="py-2 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">

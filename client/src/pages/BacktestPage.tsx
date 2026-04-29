@@ -868,15 +868,32 @@ export default function BacktestPage() {
     return result;
   };
 
+  const buildCompareBackendParams = () => {
+    const result: Record<string, any> = {};
+    for (const [strategy, params] of Object.entries(compareStrategyParams)) {
+      const converted: Record<string, number | null> = {};
+      for (const [k, v] of Object.entries(params)) {
+        if (k === "stopLossPct" || k === "takeProfitPct" || k === "trailingStopPct") {
+          converted[k] = v === null ? null : (v as number) / 100;
+        } else {
+          converted[k] = v;
+        }
+      }
+      result[strategy] = converted;
+    }
+    return result;
+  };
+
   const handleSubmit = () => {
     if (!isAuthenticated) { toast.error("请先登录"); return; }
     if (selectedSymbols.length === 0) { toast.error("请选择至少一只股票"); return; }
     const params = buildBackendParams();
     if (compareMode) {
       if (compareStrategies.length < 2) { toast.error("请选择至少2个策略进行对比"); return; }
+      const compareParams = buildCompareBackendParams();
       compareStrategiesMutation.mutate({
         name, strategies: compareStrategies as any, symbols: selectedSymbols,
-        startDate, endDate, initialCapital, maxPositionPct, strategyParams: compareStrategyParams as any,
+        startDate, endDate, initialCapital, maxPositionPct, strategyParams: compareParams as any,
       });
     } else {
       createMutation.mutate({

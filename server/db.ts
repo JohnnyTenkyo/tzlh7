@@ -1,23 +1,34 @@
-import { eq } from "drizzle-orm";
+import { eq, and, isNull, desc, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import mysql from "mysql2/promise";
+import { InsertUser, users, warmingProgress, warmingStats, scheduledWarmingTasks, aiConfigs, customDataSources } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import bcrypt from "bcryptjs";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: mysql.Pool | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+// 使用连接池而不是单一连接，支持自动重连
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      if (!_pool) {
+        _pool = mysql.createPool(process.env.DATABASE_URL);
+      }
+      _db = drizzle(_pool) as any;
+      console.log("[Database] Connected successfully with connection pool");
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
+      _pool = null;
     }
   }
   return _db;
 }
+
+// ============================================================
+// User Management
+// ============================================================
 
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
@@ -86,19 +97,33 @@ export async function getUserByOpenId(openId: string) {
   }
 
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// ============================================================
-// Simple Auth Helpers
-// ============================================================
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
 
 export async function getUserByUsername(username: string) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+// ============================================================
+// Auth Helpers
+// ============================================================
+
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10);
 }
 
 export async function registerUser(username: string, password: string, name?: string) {
@@ -144,11 +169,6 @@ export async function changePassword(userId: number, oldPassword: string, newPas
 // ============================================================
 // Warming Progress & Stats
 // ============================================================
-import {
-  warmingProgress, warmingStats, scheduledWarmingTasks,
-  aiConfigs, customDataSources,
-} from "../drizzle/schema";
-import { and, isNull, desc, ne } from "drizzle-orm";
 
 export async function recordWarmingProgress(
   userId: number, taskId: string, symbol: string,
@@ -225,6 +245,7 @@ export async function getWarmingStats(userId: number) {
 // ============================================================
 // Scheduled Warming Tasks
 // ============================================================
+
 export async function getEnabledScheduledTasks() {
   const db = await getDb();
   if (!db) return [];
@@ -284,9 +305,12 @@ export async function deleteScheduledTask(taskId: number) {
   await db.delete(scheduledWarmingTasks).where(eq(scheduledWarmingTasks.id, taskId));
 }
 
+// TODO: add feature queries here as your schema grows.
+
 // ============================================================
 // AI Configs
 // ============================================================
+
 export async function getAIConfigs(userId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -337,6 +361,7 @@ export async function setDefaultAIConfig(userId: number, provider: string, confi
 // ============================================================
 // Custom Data Sources
 // ============================================================
+
 export async function getCustomDataSources(userId: number) {
   const db = await getDb();
   if (!db) return [];

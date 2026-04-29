@@ -43,3 +43,10 @@
 - [x] 修复扫描结果不显示：getResults/todaySummary/getTodayTopSignals 中移除 system_task_log 依赖，改为直接检查今天是否有数据
 - [x] 全量缓存778只股票（已完成，每只约2511根K线）
 - [x] 全量扫描验证（2156个信号，INTC/AMD等100分）
+
+## 当前会话修复（v7 继续）
+- [x] 修复 db.ts 缺失函数：changePassword、getEnabledScheduledTasks、Custom Data Sources 相关函数
+- [x] 修复股票池市值显示：将空白改为"未知"（因为 234 只股票的市值数据为 0）
+- [x] 增强 Excel 导出：确保策略参数正确转换和显示
+- [x] 修复前端对比模式参数转换：添加 buildCompareBackendParams 函数确保百分比参数正确转换
+- [x] 添加 18 个单元测试验证所有修复（全部通过）

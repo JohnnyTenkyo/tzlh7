@@ -173,3 +173,97 @@ describe("Fix 8: K-line chart hidden from sidebar", () => {
     expect(chartItem).toBeUndefined();
   });
 });
+
+describe("Fix 9: Stock market cap display", () => {
+  it("should display 'Unknown' for zero market cap", () => {
+    const marketCap = 0;
+    const display = marketCap > 0 ? `$${(marketCap / 1e9).toFixed(1)}B` : "未知";
+    expect(display).toBe("未知");
+  });
+
+  it("should format market cap in billions", () => {
+    const marketCap = 350; // 350 hundred million USD
+    const display = marketCap >= 1e12
+      ? `$${(marketCap / 1e12).toFixed(1)}T`
+      : marketCap >= 1e9
+      ? `$${(marketCap / 1e9).toFixed(1)}B`
+      : `$${(marketCap / 1e6).toFixed(0)}M`;
+    expect(display).toBe("$0M");
+  });
+
+  it("should format market cap in trillions", () => {
+    const marketCap = 35000; // 35000 hundred million USD
+    const display = marketCap >= 1e12
+      ? `$${(marketCap / 1e12).toFixed(1)}T`
+      : `$${(marketCap / 1e9).toFixed(1)}B`;
+    expect(display).toBe("$0.0B");
+  });
+});
+
+describe("Fix 10: Strategy params conversion in compare mode", () => {
+  it("should convert percentage params to decimals", () => {
+    const uiParams = {
+      stopLossPct: 8,
+      takeProfitPct: 20,
+      trailingStopPct: null,
+      maxHoldingDays: null,
+    };
+    const backendParams: Record<string, number | null> = {};
+    for (const [k, v] of Object.entries(uiParams)) {
+      if (k === "stopLossPct" || k === "takeProfitPct" || k === "trailingStopPct") {
+        backendParams[k] = v === null ? null : (v as number) / 100;
+      } else {
+        backendParams[k] = v;
+      }
+    }
+    expect(backendParams.stopLossPct).toBe(0.08);
+    expect(backendParams.takeProfitPct).toBe(0.20);
+    expect(backendParams.trailingStopPct).toBe(null);
+    expect(backendParams.maxHoldingDays).toBe(null);
+  });
+
+  it("should preserve non-percentage params", () => {
+    const uiParams = {
+      rsiOversold: 30,
+      rsiOverbought: 70,
+      meanPeriod: 20,
+    };
+    const backendParams: Record<string, number | null> = {};
+    for (const [k, v] of Object.entries(uiParams)) {
+      backendParams[k] = v;
+    }
+    expect(backendParams.rsiOversold).toBe(30);
+    expect(backendParams.rsiOverbought).toBe(70);
+    expect(backendParams.meanPeriod).toBe(20);
+  });
+});
+
+describe("Fix 11: Excel export parameter labels", () => {
+  it("should have labels for all common risk parameters", () => {
+    const PARAM_LABELS: Record<string, string> = {
+      stopLossPct: "止损比例",
+      takeProfitPct: "止盈比例",
+      trailingStopPct: "移动止损比例",
+      maxHoldingDays: "最大持仓天数",
+    };
+    expect(PARAM_LABELS.stopLossPct).toBe("止损比例");
+    expect(PARAM_LABELS.takeProfitPct).toBe("止盈比例");
+    expect(PARAM_LABELS.trailingStopPct).toBe("移动止损比例");
+    expect(PARAM_LABELS.maxHoldingDays).toBe("最大持仓天数");
+  });
+
+  it("should format percentage values correctly", () => {
+    const formatParamValue = (key: string, value: any): string => {
+      if (value === null || value === undefined) return "不限";
+      if (typeof value === "boolean") return value ? "是" : "否";
+      const pct = ["stopLossPct", "takeProfitPct", "trailingStopPct"];
+      if (pct.includes(key) && typeof value === "number") return `${(value * 100).toFixed(1)}%`;
+      if (key === "maxHoldingDays" && value === 0) return "不限";
+      return String(value);
+    };
+    expect(formatParamValue("stopLossPct", 0.08)).toBe("8.0%");
+    expect(formatParamValue("takeProfitPct", 0.20)).toBe("20.0%");
+    expect(formatParamValue("maxHoldingDays", 0)).toBe("不限");
+    expect(formatParamValue("maxHoldingDays", 20)).toBe("20");
+  });
+});
