@@ -478,7 +478,16 @@ export const appRouter = router({
         if (key === 'maxHoldingDays' && value === 0) return '不限';
         if (typeof value === 'object') {
           if (Array.isArray(value)) return value.join(', ');
-          try { return JSON.stringify(value, null, 2); } catch { return String(value); }
+          // For objects, format each property with its label
+          try {
+            const lines: string[] = [];
+            for (const [k, v] of Object.entries(value)) {
+              const label = PARAM_LABELS[k] || k;
+              const formattedVal = formatParamValue(k, v);
+              lines.push(`${label}: ${formattedVal}`);
+            }
+            return lines.join('; ');
+          } catch { return String(value); }
         }
         return String(value);
       };
@@ -488,7 +497,20 @@ export const appRouter = router({
           // Common risk params first
           const commonKeys = ['stopLossPct', 'takeProfitPct', 'trailingStopPct', 'maxHoldingDays'];
           for (const key of commonKeys) {
-            if (key in params) summaryData.push([PARAM_LABELS[key] || key, formatParamValue(key, params[key])]);
+            if (key in params) {
+              const label = PARAM_LABELS[key] || key;
+              const value = params[key];
+              let displayValue = '';
+              if (value === null || value === undefined) displayValue = '不限';
+              else if (key === 'stopLossPct' || key === 'takeProfitPct' || key === 'trailingStopPct') {
+                displayValue = typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : String(value);
+              } else if (key === 'maxHoldingDays') {
+                displayValue = value === 0 ? '不限' : String(value);
+              } else {
+                displayValue = formatParamValue(key, value);
+              }
+              summaryData.push([label, displayValue]);
+            }
           }
           // Strategy-specific params
           const extraKeys = Object.keys(params).filter(k => !commonKeys.includes(k));

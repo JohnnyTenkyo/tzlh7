@@ -59,3 +59,15 @@
 - [x] 实施 AlphaVantage API 备用方案：作为 Finnhub 的备用数据源（使用 OVERVIEW 端点）
 - [x] 测试市值更新功能：新增 22 个单元测试全部通过（总计 40 个测试）
 - [x] 创建后台定期更新任务：每天 06:00 UTC 更新所有股票的市值数据（批量处理、限流控制、错误通知）
+
+## 当前会话最新修复（Excel 参数中文显示）
+- [x] 修复 Excel 导出中文参数显示：预置中文标签映射（止损、止盈、移动止损、最大持仓天数等）
+- [x] 修复通用参数显示：止损比例、止盈比例、移动止损比例显示为百分比
+- [x] 修复策略特有参数显示：对象参数递归格式化为中文标签
+- [x] 添加 9 个 Excel 导出测试（总计 64 个测试全部通过）
+
+## 部署前可选步骤
+- [ ] 执行数据库迁移：运行 scripts/apply-market-cap-migration.sql 创建 market_cap_cache 和 market_cap_update_log 表（可选）
+- [ ] 配置定期任务：在 Manus 平台配置每天 06:00 UTC 执行 handleMarketCapScheduledUpdate 函数（可选）
+- [ ] 验证 API 集成：测试 Finnhub 和 AlphaVantage API 连接（可选）
+- [ ] 发布到 manus.space：点击 Publish 按钮部署最新版本
