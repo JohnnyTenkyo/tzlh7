@@ -1,9 +1,29 @@
-import * as cron from "node-cron";
+import cron from "node-cron";
 import { STOCK_POOL } from "@shared/stockPool";
 import { updateMarketCapBatch } from "./marketCapUpdater";
 import { notifyOwner } from "./_core/notification";
 
 let cronJob: ReturnType<typeof cron.schedule> | null = null;
+
+// Execution log tracking
+interface CronExecutionLog {
+  timestamp: string;
+  status: 'success' | 'failure';
+  successCount?: number;
+  failureCount?: number;
+  totalCount?: number;
+  errorMessage?: string;
+}
+
+const executionLogs: CronExecutionLog[] = [];
+const MAX_LOG_ENTRIES = 30; // Keep last 30 executions
+
+function addExecutionLog(log: CronExecutionLog): void {
+  executionLogs.push(log);
+  if (executionLogs.length > MAX_LOG_ENTRIES) {
+    executionLogs.shift();
+  }
+}
 
 /**
  * Start the market cap update cron job
@@ -63,6 +83,15 @@ export function startMarketCapCronScheduler(): void {
 
       console.log(`[MarketCapCron] ${message}`);
 
+      // Record execution log
+      addExecutionLog({
+        timestamp: new Date().toISOString(),
+        status: 'success',
+        successCount: totalSuccess,
+        failureCount: totalFailure,
+        totalCount: allSymbols.length,
+      });
+
       // Send notification to owner
       await notifyOwner({
         title: `📊 市值数据定期更新完成 - ${new Date().toLocaleDateString("zh-CN")}`,
@@ -73,6 +102,13 @@ export function startMarketCapCronScheduler(): void {
     } catch (err: any) {
       const message = `市值数据更新失败：${err.message || "Unknown error"}`;
       console.error(`[MarketCapCron] ${message}`);
+
+      // Record execution log
+      addExecutionLog({
+        timestamp: new Date().toISOString(),
+        status: 'failure',
+        errorMessage: err.message || "Unknown error",
+      });
 
       await notifyOwner({
         title: `❌ 市值数据定期更新失败 - ${new Date().toLocaleDateString("zh-CN")}`,
@@ -98,13 +134,33 @@ export function stopMarketCapCronScheduler(): void {
 /**
  * Get the status of the cron job
  */
-export function getMarketCapCronStatus(): { running: boolean; nextRun?: string } {
+export function getMarketCapCronStatus(): { running: boolean; nextRun?: string; lastExecution?: CronExecutionLog } {
   if (!cronJob) {
     return { running: false };
   }
 
+  // Calculate next run time (8:00 AM EST = 13:00 UTC)
+  const now = new Date();
+  const nextRun = new Date(now);
+  nextRun.setUTCHours(13, 0, 0, 0);
+  
+  // If 13:00 UTC has already passed today, schedule for tomorrow
+  if (nextRun <= now) {
+    nextRun.setUTCDate(nextRun.getUTCDate() + 1);
+  }
+
+  const lastExecution = executionLogs.length > 0 ? executionLogs[executionLogs.length - 1] : undefined;
+
   return {
     running: true,
-    nextRun: new Date().toISOString(), // Approximate next run time
+    nextRun: nextRun.toISOString(),
+    lastExecution,
   };
+}
+
+/**
+ * Get execution logs
+ */
+export function getMarketCapCronLogs(limit: number = 10): CronExecutionLog[] {
+  return executionLogs.slice(-limit).reverse();
 }

@@ -1,9 +1,11 @@
-import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { updateMarketCapBatch, getMarketCap, getUpdateLog } from "../marketCapUpdater";
 import { getDb } from "../db";
 import { marketCapCache } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { getMarketCapCronStatus, getMarketCapCronLogs } from "../marketCapCronScheduler";
+import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
+
 
 export const marketCapRouter = router({
   /**
@@ -80,5 +82,23 @@ export const marketCapRouter = router({
         updated,
         percentage: all.length > 0 ? ((updated / all.length) * 100).toFixed(1) : "0",
       };
+    }),
+
+  /**
+   * 获取定时任务状态
+   */
+  getCronStatus: publicProcedure
+    .query(async () => {
+      return getMarketCapCronStatus();
+    }),
+
+  /**
+   * 获取定时任务执行日志
+   */
+  getCronLogs: publicProcedure
+    .input(z.object({ limit: z.number().default(10) }))
+    .query(async ({ input }: any) => {
+      const limit = Math.min(input.limit, 30);
+      return getMarketCapCronLogs(limit);
     }),
 });
