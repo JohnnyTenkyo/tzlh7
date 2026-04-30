@@ -161,7 +161,7 @@ export default function CachePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4" id="stats-grid">
         <Card className="bg-card border-border">
           <CardContent className="pt-4 pb-4">
-            <div className="text-2xl font-bold text-blue-400">{Object.keys(groupedEntries).length}</div>
+            <div className="text-2xl font-bold text-blue-400">{cachedCount}</div>
             <div className="text-xs text-muted-foreground mt-1">已缓存股票</div>
           </CardContent>
         </Card>

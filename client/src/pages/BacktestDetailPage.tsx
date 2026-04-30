@@ -581,7 +581,7 @@ export default function BacktestDetailPage() {
                   } catch {}
 
                   // Format a percentage decimal (0.08) → "8.0%", null/0 → "不限"
-                  const fmtPct = (v: any) => (v == null || v === 0) ? '不限' : `${(Number(v) * 100).toFixed(1)}%`;
+                  const fmtPct = (v: any) => (v == null) ? '不限' : `${(Number(v) * 100).toFixed(1)}%`;
                   const fmtDays = (v: any) => (v == null || v === 0) ? '不限' : `${v} 天`;
 
                   return (

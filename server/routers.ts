@@ -499,26 +499,27 @@ export const appRouter = router({
       if (session.strategyParams) {
         try {
           const params = typeof session.strategyParams === 'string' ? JSON.parse(session.strategyParams) : session.strategyParams;
-          // Common risk params first
+          // Common risk params first - always show these
           const commonKeys = ['stopLossPct', 'takeProfitPct', 'trailingStopPct', 'maxHoldingDays'];
           for (const key of commonKeys) {
-            if (key in params) {
-              const label = PARAM_LABELS[key] || key;
-              const value = params[key];
-              let displayValue = '';
-              if (value === null || value === undefined) displayValue = '不限';
-              else if (key === 'stopLossPct' || key === 'takeProfitPct' || key === 'trailingStopPct') {
-                displayValue = typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : String(value);
-              } else if (key === 'maxHoldingDays') {
-                displayValue = value === 0 ? '不限' : String(value);
-              } else {
-                displayValue = formatParamValue(key, value);
-              }
-              summaryData.push([label, displayValue]);
+            const label = PARAM_LABELS[key] || key;
+            const value = params[key];
+            let displayValue = '';
+            if (value === null || value === undefined) displayValue = '不限';
+            else if (key === 'stopLossPct' || key === 'takeProfitPct' || key === 'trailingStopPct') {
+              displayValue = typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : String(value);
+            } else if (key === 'maxHoldingDays') {
+              displayValue = value === 0 ? '不限' : String(value);
+            } else {
+              displayValue = formatParamValue(key, value);
             }
+            summaryData.push([label, displayValue]);
           }
-          // Strategy-specific params
-          const extraKeys = Object.keys(params).filter(k => !commonKeys.includes(k));
+          
+          // Strategy-specific params - only show params for current strategy
+          const strategyDefaults = STRATEGY_DEFAULTS[session.strategy as StrategyType] || {};
+          const strategyParamKeys = Object.keys(strategyDefaults).filter(k => !commonKeys.includes(k));
+          const extraKeys = strategyParamKeys.filter(k => k in params);
           if (extraKeys.length > 0) {
             summaryData.push(['--- 策略特有参数 ---']);
             for (const key of extraKeys) {

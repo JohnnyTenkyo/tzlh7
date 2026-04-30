@@ -1227,7 +1227,7 @@ export default function BacktestPage() {
                   ) : (
                     historyData.map(s => {
                       const ret = Number(s.totalReturnPct) * 100;
-                      const sp = s.strategyParams as any;
+                      const sp = typeof s.strategyParams === 'string' ? JSON.parse(s.strategyParams) : s.strategyParams as any;
                       return (
                         <div key={s.id} className="flex items-center gap-2.5 p-3 rounded border border-border/30 hover:border-border/60 transition-colors">
                           <div className="flex-1 min-w-0">
@@ -1246,10 +1246,11 @@ export default function BacktestPage() {
                             </div>
                             {/* Show risk params summary */}
                             {sp && (
-                              <div className="text-[10px] text-muted-foreground mt-0.5 flex gap-2">
-                                <span>止损: <span className={sp.stopLossPct == null ? "text-yellow-400" : ""}>{sp.stopLossPct == null ? "不限" : `${(sp.stopLossPct * 100).toFixed(0)}%`}</span></span>
-                                <span>止盈: <span className={sp.takeProfitPct == null ? "text-yellow-400" : ""}>{sp.takeProfitPct == null ? "不限" : `${(sp.takeProfitPct * 100).toFixed(0)}%`}</span></span>
-                                {sp.trailingStopPct != null && <span>移动止损: <span className="text-orange-400">{(sp.trailingStopPct * 100).toFixed(0)}%</span></span>}
+                              <div className="text-[10px] text-muted-foreground mt-0.5 flex gap-2 flex-wrap">
+                                <span>止损: <span className={sp.stopLossPct == null ? "text-yellow-400" : ""}>{sp.stopLossPct == null ? "不限" : `${(sp.stopLossPct * 100).toFixed(1)}%`}</span></span>
+                                <span>止盈: <span className={sp.takeProfitPct == null ? "text-yellow-400" : ""}>{sp.takeProfitPct == null ? "不限" : `${(sp.takeProfitPct * 100).toFixed(1)}%`}</span></span>
+                                {sp.trailingStopPct != null && sp.trailingStopPct > 0 && <span>移动止损: <span className="text-orange-400">{(sp.trailingStopPct * 100).toFixed(1)}%</span></span>}
+                                {sp.maxHoldingDays != null && sp.maxHoldingDays > 0 && <span>持仓天数: <span className="text-blue-400">{sp.maxHoldingDays}</span></span>}
                               </div>
                             )}
                           </div>
