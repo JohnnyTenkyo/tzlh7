@@ -26,6 +26,11 @@ import { dataSourcePriorityRouter } from "./routers/dataSourcePriority";
 const removedFailedSymbols = new Set<string>();
 import { scanHistoryRouter } from "./routers/scanHistory";
 import { marketCapRouter } from "./routers/marketCap";
+import { marketCapQueryRouter } from "./routers/marketCapQuery";
+import { router as createRouter } from "./_core/trpc";
+
+// Create router for marketCapQuery
+const createMarketCapQueryRouter = () => createRouter(marketCapQueryRouter);
 
 function getJwtSecret() {
   return new TextEncoder().encode(ENV.cookieSecret);
@@ -712,6 +717,7 @@ export const appRouter = router({
   dataSourcePriority: router(dataSourcePriorityRouter),
   scanHistory: router(scanHistoryRouter),
   marketCap: marketCapRouter,
+  marketCapQuery: createMarketCapQueryRouter(),
   cache: router({
     status: publicProcedure.query(async () => {
       const status = await getCacheStatus();

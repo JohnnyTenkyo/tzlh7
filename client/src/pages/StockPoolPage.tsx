@@ -56,6 +56,25 @@ export default function StockPoolPage() {
     pageSize: PAGE_SIZE,
   }, { keepPreviousData: true } as any);
 
+  // Get market caps for displayed stocks
+  const symbols = useMemo(() => data?.items.map(s => s.symbol) || [], [data?.items]);
+  const { data: marketCapsData, isLoading: isLoadingMarketCaps } = trpc.marketCapQuery.getMultipleMarketCaps.useQuery(
+    { symbols },
+    { enabled: symbols.length > 0, staleTime: 1000 * 60 * 60 } // Cache for 1 hour
+  );
+
+  // Merge market cap data with stock data
+  const displayData = useMemo(() => {
+    if (!data) return data;
+    return {
+      ...data,
+      items: data.items.map(stock => ({
+        ...stock,
+        marketCap: marketCapsData?.[stock.symbol]?.marketCap || stock.marketCap || 0,
+      })),
+    };
+  }, [data, marketCapsData]);
+
   const handleSearch = (v: string) => {
     setSearch(v);
     setPage(1);
@@ -114,7 +133,7 @@ export default function StockPoolPage() {
       {/* Table */}
       <Card className="bg-card border-border">
         <CardContent className="p-0">
-          {isLoading ? (
+          {isLoading || isLoadingMarketCaps ? (
             <div className="text-center py-8 text-muted-foreground text-sm">加载中...</div>
           ) : (
             <div className="overflow-x-auto">
@@ -129,7 +148,7 @@ export default function StockPoolPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.items.map(stock => (
+                  {displayData?.items.map(stock => (
                     <tr key={stock.symbol} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                       <td className="py-2 px-4">
                         <span className="font-mono font-medium text-primary">{stock.symbol}</span>
