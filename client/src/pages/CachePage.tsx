@@ -116,6 +116,8 @@ export default function CachePage() {
   const failedSymbols = failedData?.failed || cacheStatsData?.failed || [];
   const cachedCount = failedData?.cachedCount || cacheStatsData?.cachedCount || 0;
   const totalCount = failedData?.total || cacheStatsData?.total || 0;
+  // Defensive: ensure uncachedCount is never negative (in case of data inconsistency)
+  const uncachedCount = Math.max(0, totalCount - cachedCount);
 
   return (
     <div className="space-y-6">
@@ -195,7 +197,7 @@ export default function CachePage() {
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-orange-400">{totalCount - cachedCount}</div>
+                <div className="text-2xl font-bold text-orange-400">{uncachedCount}</div>
                 <div className="text-xs text-muted-foreground mt-1">未缓存股票 (点击展开)</div>
               </div>
               <div className="text-xs text-muted-foreground text-right">
