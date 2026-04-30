@@ -71,3 +71,14 @@
 - [ ] 配置定期任务：在 Manus 平台配置每天 06:00 UTC 执行 handleMarketCapScheduledUpdate 函数（可选）
 - [ ] 验证 API 集成：测试 Finnhub 和 AlphaVantage API 连接（可选）
 - [ ] 发布到 manus.space：点击 Publish 按钮部署最新版本
+
+## 当前会话最新修复（定期任务内置）
+- [x] 执行数据库迁移：创建 market_cap_cache 和 market_cap_update_log 表
+- [x] 内置 node-cron 定时任务：每天美东时间 8 点（13:00 UTC）执行市值更新
+- [x] 添加 10 个定时任务测试（总计 74 个测试全部通过）
+- [x] 安装依赖：node-cron 和 @types/node-cron
+- [x] 修复服务器启动：在 server/_core/index.ts 中初始化定时任务
+
+## 部署前必需步骤
+- [ ] 发布到 manus.space：点击 Publish 按钮部署最新版本
+- [ ] 执行数据库迁移（需要数据库访问权限）：运行 scripts/apply-market-cap-migration.sql

@@ -10,6 +10,7 @@ import { sdk } from "./sdk";
 import { serveStatic, setupVite } from "./vite";
 import { initializeWebSocket } from "./websocket";
 import { startCacheScheduler, initializeScheduledTasks } from "../cacheScheduler";
+import { startMarketCapCronScheduler } from "../marketCapCronScheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -107,6 +108,13 @@ async function startServer() {
   }).catch(err => {
     console.error("[CacheScheduler] Failed to start scheduler:", err);
   });
+
+  // Initialize and start the market cap update scheduler
+  try {
+    startMarketCapCronScheduler();
+  } catch (err) {
+    console.error("[MarketCapCron] Failed to start market cap scheduler:", err);
+  }
 }
 
 startServer().catch(console.error);
