@@ -631,8 +631,7 @@ export default function CachePage() {
                     <th className="text-left py-2 pr-3">时间框架</th>
                     <th className="text-right py-2 pr-3">K线数</th>
                     <th className="text-left py-2 pr-3">数据范围</th>
-                    <th className="text-left py-2 pr-3">数据源</th>
-                    <th className="text-left py-2">更新时间</th>
+
                   </tr>
                 </thead>
                 <tbody>
@@ -646,10 +645,7 @@ export default function CachePage() {
                       <td className="py-1.5 pr-3 text-muted-foreground">
                         {entry.oldestDate} ~ {entry.newestDate}
                       </td>
-                      <td className="py-1.5 pr-3 text-muted-foreground">{entry.source || "-"}</td>
-                      <td className="py-1.5 text-muted-foreground">
-                        {entry.updatedAt ? new Date(Number(entry.updatedAt)).toLocaleDateString("zh-CN") : "-"}
-                      </td>
+
                     </tr>
                   ))}
                 </tbody>

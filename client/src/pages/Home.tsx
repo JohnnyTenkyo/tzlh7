@@ -141,7 +141,7 @@ export default function Home() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-foreground">梯子量化平台</h1>
+            <h1 className="text-2xl font-bold text-foreground">量化回测平台</h1>
             <DualClock />
           </div>
           <p className="text-muted-foreground mt-1">多数据源聚合 · 8种策略回测 · Gemini AI 智能分析</p>
