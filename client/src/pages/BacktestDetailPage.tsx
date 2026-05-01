@@ -509,28 +509,7 @@ export default function BacktestDetailPage() {
                     <span className="text-muted-foreground">亏损交易</span>
                     <span className="font-bold text-loss">{trades.filter((t: any) => t.side === 'sell' && Number(t.pnl) < 0).length}</span>
                   </div>
-                  <div className="border-t border-border my-1.5"></div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">止损触发次数</span>
-                    <span className="font-medium">0 次</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">止盈触发次数</span>
-                    <span className="font-medium">0 次</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">移动止盈触发</span>
-                    <span className="font-medium">0 次</span>
-                  </div>
-                  <div className="border-t border-border my-1.5"></div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">止损比例</span>
-                    <span className="font-bold text-amber-400">0.10%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">移动止损</span>
-                    <span className="font-medium">未启用</span>
-                  </div>
+
                 </div>
               </CardContent>
             </Card>

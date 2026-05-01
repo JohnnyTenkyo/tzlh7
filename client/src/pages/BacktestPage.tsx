@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -752,10 +752,20 @@ export default function BacktestPage() {
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
 
+  // Get active stocks (excluding excluded ones)
+  const { data: activeStocks = [] } = trpc.cache.getActiveStocks.useQuery();
+
   // Form state
   const [name, setName] = useState(`回测_${new Date().toLocaleDateString("zh-CN").replace(/\//g, "")}`);
   const [strategy, setStrategy] = useState<StrategyKey>("standard");
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(STOCK_POOL.map(s => s.symbol));
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
+  
+  // Initialize selectedSymbols with active stocks when they load
+  useEffect(() => {
+    if (activeStocks.length > 0 && selectedSymbols.length === 0) {
+      setSelectedSymbols(activeStocks);
+    }
+  }, [activeStocks]);
   const [startDate, setStartDate] = useState(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 2); return d.toISOString().split("T")[0]; });
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
   const [initialCapital, setInitialCapital] = useState(100000);
@@ -972,16 +982,17 @@ export default function BacktestPage() {
                 <Label className="text-xs text-muted-foreground">快速预设</Label>
                 <div className="flex flex-wrap gap-1.5">
                   <Button size="sm" variant="outline" className="text-xs h-7"
-                    onClick={() => { setSelectedSymbols(STOCK_POOL.map(s => s.symbol)); toast.success(`已选全部 ${STOCK_POOL.length} 只`); }}>
+                    onClick={() => { setSelectedSymbols(activeStocks); toast.success(`已选全部 ${activeStocks.length} 只`); }}>
                     全部股票
                   </Button>
                   {PRESETS.map(p => (
                     <Button key={p.label} size="sm" variant="outline" className="text-xs h-7"
                       onClick={() => {
+                        // Filter from STOCK_POOL but only include active stocks
                         const filtered = filterStocks(STOCK_POOL, {
                           sectors: p.sectors.length > 0 ? p.sectors : undefined,
                           marketCapTiers: p.caps.length > 0 ? p.caps : undefined,
-                        });
+                        }).filter(s => activeStocks.includes(s.symbol));
                         setSelectedSymbols(filtered.map(s => s.symbol));
                         toast.success(`${p.label}：已选 ${filtered.length} 只`);
                       }}>

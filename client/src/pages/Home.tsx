@@ -133,7 +133,7 @@ export default function Home() {
   );
 
   const totalCached = (Array.isArray(cacheData?.cacheEntries) ? cacheData.cacheEntries.length : 0) || 0;
-  const stockPoolTotal = failedData?.total ?? 793;
+  const stockPoolTotal = failedData?.total ?? 0;
 
   return (
     <div className="space-y-6">
@@ -268,7 +268,7 @@ export default function Home() {
                 <div>
                   <div className="font-bold text-base">今日全量扫描{scanSummary?.isYesterdayData && <span className="text-xs text-yellow-400 ml-2">(显示前一日数据)</span>}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {scanSummary?.totalBuy ? `买入信号 ${scanSummary.totalBuy} 个` : "实时扫描 793 只股票"}
+                    {scanSummary?.totalBuy ? `买入信号 ${scanSummary.totalBuy} 个` : "实时扫描全部股票"}
                   </div>
                 </div>
               </div>

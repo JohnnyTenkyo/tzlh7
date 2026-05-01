@@ -219,14 +219,7 @@ export const appRouter = router({
     })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      const result = await db.insert(backtestSessions).values({
-        userId: ctx.user.id, name: input.name, strategy: input.strategy as any,
-        symbols: input.symbols, startDate: input.startDate, endDate: input.endDate,
-        initialCapital: String(input.initialCapital), maxPositionPct: String(input.maxPositionPct),
-        strategyParams: input.strategyParams || null,
-      }).$returningId();
-      const sessionId = result[0].id;
-      const actualStrategy = input.strategy === "gemini_ai" ? "standard" : (input.strategy as any as StrategyType);
+      
       // Convert frontend percentage integers to decimals for the engine
       // Frontend sends: stopLossPct=8 (8%), engine expects: 0.08
       const rawParams = input.strategyParams || {};
@@ -239,6 +232,17 @@ export const appRouter = router({
           (normalizedParams as any)[field] = val / 100;
         }
       }
+      
+      // Save NORMALIZED params to database (with converted percentages)
+      const result = await db.insert(backtestSessions).values({
+        userId: ctx.user.id, name: input.name, strategy: input.strategy as any,
+        symbols: input.symbols, startDate: input.startDate, endDate: input.endDate,
+        initialCapital: String(input.initialCapital), maxPositionPct: String(input.maxPositionPct),
+        strategyParams: normalizedParams || null,
+      }).$returningId();
+      const sessionId = result[0].id;
+      const actualStrategy = input.strategy === "gemini_ai" ? "standard" : (input.strategy as any as StrategyType);
+      
       runBacktest({
         sessionId, symbols: input.symbols, startDate: input.startDate, endDate: input.endDate,
         strategy: actualStrategy, initialCapital: input.initialCapital, maxPositionPct: input.maxPositionPct,
@@ -516,13 +520,11 @@ export const appRouter = router({
             summaryData.push([label, displayValue]);
           }
           
-          // Strategy-specific params - only show params for current strategy
-          const strategyDefaults = STRATEGY_DEFAULTS[session.strategy as StrategyType] || {};
-          const strategyParamKeys = Object.keys(strategyDefaults).filter(k => !commonKeys.includes(k));
-          const extraKeys = strategyParamKeys.filter(k => k in params);
-          if (extraKeys.length > 0) {
+          // Strategy-specific params - show all params not in commonKeys
+          const allParamKeys = Object.keys(params).filter(k => !commonKeys.includes(k));
+          if (allParamKeys.length > 0) {
             summaryData.push(['--- 策略特有参数 ---']);
-            for (const key of extraKeys) {
+            for (const key of allParamKeys) {
               summaryData.push([PARAM_LABELS[key] || key, formatParamValue(key, params[key])]);
             }
           }
@@ -771,10 +773,14 @@ export const appRouter = router({
           
           // total reflects active pool size (minus excluded symbols)
           const activeTotal = allSymbols.length - excludedSet.size;
+          
+          // cachedCount should only count cached ACTIVE symbols (not excluded ones)
+          const activeCachedCount = allSymbols.filter(s => cachedSet.has(s) && !excludedSet.has(s)).length;
+          
           return { 
             failed, 
             total: activeTotal, 
-            cachedCount: cachedSet.size 
+            cachedCount: activeCachedCount 
           };
         } catch (err) {
           console.error("[Cache] Failed to get failed symbols:", err);
@@ -814,6 +820,25 @@ export const appRouter = router({
       const { getWarmingStats } = await import("./db");
       const stats = await getWarmingStats(ctx.user.id);
       return stats;
+    }),
+    getActiveStocks: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return STOCK_POOL.map(s => s.symbol);
+      
+      try {
+        // Get all symbols from stock pool
+        const allSymbols = STOCK_POOL.map(s => s.symbol);
+        
+        // Get persisted excluded symbols from DB
+        const excluded = await db.select({ symbol: excludedSymbols.symbol }).from(excludedSymbols);
+        const excludedSet = new Set(excluded.map((e: any) => e.symbol));
+        
+        // Return only active symbols (not excluded)
+        return allSymbols.filter(s => !excludedSet.has(s));
+      } catch (err) {
+        console.error("[Cache] Failed to get active stocks:", err);
+        return STOCK_POOL.map(s => s.symbol);
+      }
     }),
     createScheduledTask: protectedProcedure
       .input(z.object({
@@ -1179,10 +1204,17 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        
+        // Get active stocks count (excluding excluded symbols)
+        const allSymbols = STOCK_POOL.map(s => s.symbol);
+        const excluded = await db.select({ symbol: excludedSymbols.symbol }).from(excludedSymbols);
+        const excludedSet = new Set(excluded.map((e: any) => e.symbol));
+        const activeCount = allSymbols.filter(s => !excludedSet.has(s)).length;
+        
         // Create a persistent job record
         const [jobRow] = await db.execute(sql`
           INSERT INTO scan_jobs (userId, status, progress, total, strategies, message)
-          VALUES (${ctx.user!.id}, 'running', 0, 793, ${JSON.stringify(input.strategies)}, '扫描启动中...')
+          VALUES (${ctx.user!.id}, 'running', 0, ${activeCount}, ${JSON.stringify(input.strategies)}, '扫描启动中...')
         `) as any;
         const jobId: number = (jobRow as any).insertId;
         const { getIO } = await import("./wsProgress");
@@ -1202,7 +1234,7 @@ export const appRouter = router({
         }).then(async signals => {
           await saveScanResults(signals).catch(console.error);
           await db.execute(sql`UPDATE scan_jobs SET status='done', progress=${signals.length}, message=${"扫描完成，共 " + signals.length + " 个信号"}, resultCount=${signals.length}, completedAt=NOW() WHERE id=${jobId}`).catch(() => {});
-          getIO()?.emit("scan:progress", { jobId, done: 793, total: 793, percent: 100, status: "done", resultCount: signals.length });
+          getIO()?.emit("scan:progress", { jobId, done: activeCount, total: activeCount, percent: 100, status: "done", resultCount: signals.length });
         }).catch(async (err) => {
           await db.execute(sql`UPDATE scan_jobs SET status='error', message=${String(err)} WHERE id=${jobId}`).catch(() => {});
         });

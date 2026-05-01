@@ -189,7 +189,7 @@ export default function TodayScanPage() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {summary?.date ? `${summary.date} · ` : ""}
-            {summary ? `买入信号 ${summary.totalBuy} 个 · 卖出信号 ${summary.totalSell} 个` : "实时扫描 793 只股票，多策略信号分析"}
+            {summary ? `买入信号 ${summary.totalBuy} 个 · 卖出信号 ${summary.totalSell} 个` : "实时扫描全部股票，多策略信号分析"}
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -392,7 +392,7 @@ export default function CachePage() {
                   onClick={() => warmMutation.mutate({ symbols: STOCK_POOL.map(s => s.symbol) })}
                   disabled={warmMutation.isPending || warming?.isWarming}
                 >
-                  全部股票 ({STOCK_POOL.length})
+                  全部股票
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
