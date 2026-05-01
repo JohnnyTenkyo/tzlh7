@@ -28,6 +28,8 @@ export default function CachePage() {
   const [filteredSymbols, setFilteredSymbols] = useState<string[]>(STOCK_POOL.map(s => s.symbol));
   const [showFailedSymbols, setShowFailedSymbols] = useState(false);
   const [selectedFailedSymbols, setSelectedFailedSymbols] = useState<Set<string>>(new Set());
+  const [cacheSearchSymbol, setCacheSearchSymbol] = useState<string>("");
+  const [warmSearchSymbol, setWarmSearchSymbol] = useState<string>("");
 
   // Helper to update filtered symbols
   const updateFiltered = (sectors: StockSector[], tiers: MarketCapTier[]) => {
@@ -413,6 +415,70 @@ export default function CachePage() {
             </CardHeader>
             {showPoolFilter && (
               <CardContent className="space-y-4 border-t border-border pt-4">
+                {/* Stock Code Search */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">按股票代码搜索</Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="输入股票代码（如 AAPL）..."
+                      value={warmSearchSymbol}
+                      onChange={(e) => setWarmSearchSymbol(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && warmSearchSymbol) {
+                          const stock = STOCK_POOL.find(s => s.symbol === warmSearchSymbol);
+                          if (stock) {
+                            setFilteredSymbols([stock.symbol]);
+                            setSelectedSectors([]);
+                            setSelectedCapTiers([]);
+                            toast.success(`已选中 ${warmSearchSymbol}`);
+                          } else {
+                            toast.error(`未找到股票 ${warmSearchSymbol}`);
+                          }
+                        }
+                      }}
+                      className="flex-1 px-3 py-1.5 text-xs bg-muted rounded border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-8 px-2"
+                      onClick={() => {
+                        if (!warmSearchSymbol) {
+                          toast.error("请输入股票代码");
+                          return;
+                        }
+                        const stock = STOCK_POOL.find(s => s.symbol === warmSearchSymbol);
+                        if (stock) {
+                          setFilteredSymbols([stock.symbol]);
+                          setSelectedSectors([]);
+                          setSelectedCapTiers([]);
+                          toast.success(`已选中 ${warmSearchSymbol}`);
+                        } else {
+                          toast.error(`未找到股票 ${warmSearchSymbol}`);
+                        }
+                      }}
+                      disabled={!warmSearchSymbol}
+                    >
+                      搜索
+                    </Button>
+                    {warmSearchSymbol && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          setWarmSearchSymbol("");
+                          setFilteredSymbols(STOCK_POOL.map(s => s.symbol));
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">输入股票代码后按 Enter 或点击搜索按钮</p>
+                </div>
+
                 {/* Sectors */}
                 <div className="space-y-2">
                   <Label className="text-xs font-medium">行业板块</Label>
@@ -518,89 +584,7 @@ export default function CachePage() {
       )}
 
       {/* Cache Coverage Timeline */}
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Activity className="h-4 w-4" /> 缓存覆盖范围可视化
-          </CardTitle>
-          {isAuthenticated && (
-            <Button size="sm" variant="outline" className="text-xs h-7 gap-1"
-              onClick={() => autoWarmMutation.mutate()}
-              disabled={autoWarmMutation.isPending}>
-              <Zap className="h-3 w-3" /> 自动预热过期数据
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {timelineData ? (
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="bg-muted/50 rounded-lg p-2">
-                  <div className="text-lg font-bold text-green-400">{timelineData.coveredSymbols}</div>
-                  <div className="text-xs text-muted-foreground">已覆盖股票</div>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-2">
-                  <div className="text-lg font-bold text-yellow-400">{timelineData.totalSymbols - timelineData.coveredSymbols}</div>
-                  <div className="text-xs text-muted-foreground">缺口（未缓存）</div>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-2">
-                  <div className="text-lg font-bold text-blue-400">{timelineData.avgCoverageYears}年</div>
-                  <div className="text-xs text-muted-foreground">平均覆盖年限</div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>缓存覆盖率</span>
-                  <span>{Math.round(timelineData.coveredSymbols / Math.max(timelineData.totalSymbols, 1) * 100)}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-green-500 h-2 rounded-full transition-all"
-                    style={{ width: `${Math.round(timelineData.coveredSymbols / Math.max(timelineData.totalSymbols, 1) * 100)}%` }}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                <div className="text-xs text-muted-foreground mb-2">各股票缓存时间线（按K线数量排序）</div>
-                {timelineData.entries.slice(0, 50).map((entry: any) => {
-                  const today = new Date().toISOString().split('T')[0];
-                  const minDate = '2018-01-01';
-                  const totalDays = (new Date(today).getTime() - new Date(minDate).getTime()) / 86400000;
-                  const startPct = entry.oldestDate
-                    ? Math.max(0, (new Date(entry.oldestDate).getTime() - new Date(minDate).getTime()) / 86400000 / totalDays * 100)
-                    : 0;
-                  const widthPct = entry.oldestDate && entry.newestDate
-                    ? Math.min(100 - startPct, (new Date(entry.newestDate).getTime() - new Date(entry.oldestDate).getTime()) / 86400000 / totalDays * 100)
-                    : 0;
-                  const isStale = entry.newestDate && entry.newestDate < today.slice(0, 7);
-                  return (
-                    <div key={`${entry.symbol}-${entry.timeframe}`} className="flex items-center gap-2 text-xs">
-                      <span className="font-mono text-primary w-12 shrink-0">{entry.symbol}</span>
-                      <div className="flex-1 bg-muted rounded-full h-1.5 relative overflow-hidden">
-                        {widthPct > 0 && (
-                          <div
-                            className={`absolute h-1.5 rounded-full ${isStale ? 'bg-yellow-500' : 'bg-green-500'}`}
-                            style={{ left: `${startPct}%`, width: `${widthPct}%` }}
-                          />
-                        )}
-                      </div>
-                      <span className="text-muted-foreground w-20 shrink-0 text-right">
-                        {entry.oldestDate ? `${entry.oldestDate.slice(0,7)}~${(entry.newestDate || '?').slice(0,7)}` : '无数据'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />最新
-                <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1 ml-2" />过期（需更新）
-              </p>
-            </div>
-          ) : (
-            <div className="text-center py-6 text-muted-foreground text-sm">加载缓存覆盖数据...</div>
-          )}
-        </CardContent>
-      </Card>
+
 
       {/* Cache Entries */}
       <Card className="bg-card border-border">
@@ -619,7 +603,27 @@ export default function CachePage() {
               <p className="text-xs mt-1">使用上方快速预热功能来缓存常用股票数据</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="搜索股票代码..."
+                  value={cacheSearchSymbol}
+                  onChange={(e) => setCacheSearchSymbol(e.target.value.toUpperCase())}
+                  className="flex-1 px-3 py-1.5 text-xs bg-muted rounded border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                {cacheSearchSymbol && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setCacheSearchSymbol("")}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+              <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground">
@@ -632,7 +636,7 @@ export default function CachePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.slice(0, 100).map((entry: any, i: number) => (
+                  {entries.filter((e: any) => !cacheSearchSymbol || e.symbol.includes(cacheSearchSymbol)).slice(0, 100).map((entry: any, i: number) => (
                     <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
                       <td className="py-1.5 pr-3 font-mono font-medium text-primary">{entry.symbol}</td>
                       <td className="py-1.5 pr-3">
@@ -650,9 +654,10 @@ export default function CachePage() {
                   ))}
                 </tbody>
               </table>
-              {entries.length > 100 && (
+              {entries.filter((e: any) => !cacheSearchSymbol || e.symbol.includes(cacheSearchSymbol)).length > 100 && (
                 <p className="text-xs text-muted-foreground text-center mt-2">仅显示前 100 条</p>
               )}
+              </div>
             </div>
           )}
         </CardContent>
