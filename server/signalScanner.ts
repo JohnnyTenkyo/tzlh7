@@ -42,6 +42,7 @@ export interface ScanOptions {
   signalType?: SignalType;
   limit?: number;
   useCache?: boolean; // use DB cached results if available
+  excludeSymbols?: Set<string>; // symbols to exclude (e.g., delisted or renamed)
 }
 
 function getTodayDate(): string {
@@ -246,6 +247,10 @@ export async function scanStockPool(
 
   // Filter stocks
   let stocks = STOCK_POOL;
+  // Exclude delisted or renamed stocks
+  if (options.excludeSymbols && options.excludeSymbols.size > 0) {
+    stocks = stocks.filter(s => !options.excludeSymbols!.has(s.symbol));
+  }
   if (sectors && sectors.length > 0) {
     stocks = stocks.filter(s => s.sectors.some(sec => sectors.includes(sec)));
   }
@@ -285,8 +290,11 @@ export async function scanStockPool(
             });
           }
         }
-      } catch {
-        // Skip failed stocks silently
+      } catch (err) {
+        // Skip failed stocks with logging
+        if (stock.symbol && process.env.DEBUG_SCAN) {
+          console.warn(`[Scan] Failed to analyze ${stock.symbol}:`, err instanceof Error ? err.message : String(err));
+        }
       } finally {
         done++;
         onProgress?.(done, stocks.length, stock.symbol);

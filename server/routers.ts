@@ -1205,11 +1205,12 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
         
-        // Get active stocks count (excluding excluded symbols)
+        // Get active stocks (excluding excluded symbols)
         const allSymbols = STOCK_POOL.map(s => s.symbol);
         const excluded = await db.select({ symbol: excludedSymbols.symbol }).from(excludedSymbols);
         const excludedSet = new Set(excluded.map((e: any) => e.symbol));
-        const activeCount = allSymbols.filter(s => !excludedSet.has(s)).length;
+        const activeSymbols = allSymbols.filter(s => !excludedSet.has(s));
+        const activeCount = activeSymbols.length;
         
         // Create a persistent job record
         const [jobRow] = await db.execute(sql`
@@ -1224,6 +1225,7 @@ export const appRouter = router({
           marketCapTiers: input.marketCapTiers as any,
           minScore: input.minScore,
           signalType: input.signalType as any,
+          excludeSymbols: excludedSet,
         };
         // Run scan in background with progress updates
         scanStockPool(options, async (done, total, symbol) => {
@@ -1487,9 +1489,18 @@ async function logSystemTask(taskName: string, success: boolean, message: string
 
 export async function handleDailyScanScheduled(): Promise<{ success: boolean; message: string; stats: any }> {
   const strategies: StrategySignalType[] = ["standard", "aggressive", "ladder_cd_combo", "mean_reversion", "macd_volume", "bollinger_squeeze"];
-  const options: ScanOptions = { strategies, minScore: 40 };
   try {
+    // Get active stocks (excluding excluded symbols)
+    const db = await getDb();
+    const allSymbols = STOCK_POOL.map(s => s.symbol);
+    const excluded = db ? await db.select({ symbol: excludedSymbols.symbol }).from(excludedSymbols) : [];
+    const excludedSet = new Set(excluded.map((e: any) => e.symbol));
+    const activeCount = allSymbols.length - excludedSet.size;
+    
+    console.log(`[DailyScan] Starting daily scan for ${activeCount} active stocks (excluded ${excludedSet.size})...`);
+    const options: ScanOptions = { strategies, minScore: 40, excludeSymbols: excludedSet };
     const signals = await scanStockPool(options);
+    console.log(`[DailyScan] Scan completed: found ${signals.length} signals from ${activeCount} active stocks`);
     await saveScanResults(signals);
     const buySignals = signals.filter(s => s.signalType === "buy");
     const byStrategy: Record<string, number> = {};
@@ -1508,6 +1519,7 @@ export async function handleDailyScanScheduled(): Promise<{ success: boolean; me
       message: `扫描完成，共 ${buySignals.length} 个买入信号已保存`,
       stats: { totalBuy: buySignals.length, byStrategy, top5: top5.map(s => ({ symbol: s.symbol, strategy: s.strategy, score: s.score })) },
     };
+    console.log("[DailyScan] Saving results and notifying owner...");
     await logSystemTask("daily-scan", true, result.message, result.stats);
     await notifyOwner({
       title: `📊 今日量化信号扫描完成 - ${new Date().toLocaleDateString("zh-CN")}`,
@@ -1516,6 +1528,7 @@ export async function handleDailyScanScheduled(): Promise<{ success: boolean; me
     return result;
   } catch (err: any) {
     const msg = err.message || "扫描失败";
+    console.error("[DailyScan] Error:", err);
     await logSystemTask("daily-scan", false, msg, {});
     return { success: false, message: msg, stats: {} };
   }
@@ -1527,25 +1540,33 @@ export async function handleDailyScanScheduled(): Promise<{ success: boolean; me
  * Runs at 05:00 US Eastern time (UTC 09:00) on weekdays.
  */
 export async function handleDailyCacheScheduled(): Promise<{ success: boolean; message: string; stats: any }> {
-  const allSymbols = STOCK_POOL.map(s => s.symbol);
   try {
-    // Warm all symbols with 1d timeframe
-    warmCacheForSymbols(allSymbols, ["1d"]).catch(err =>
+    // Get active stocks (excluding excluded symbols)
+    const db = await getDb();
+    const allSymbols = STOCK_POOL.map(s => s.symbol);
+    const excluded = db ? await db.select({ symbol: excludedSymbols.symbol }).from(excludedSymbols) : [];
+    const excludedSet = new Set(excluded.map((e: any) => e.symbol));
+    const activeSymbols = allSymbols.filter(s => !excludedSet.has(s));
+    
+    console.log(`[DailyCache] Starting cache warming for ${activeSymbols.length} active stocks (excluded ${excludedSet.size})`);
+    // Warm active symbols with 1d timeframe
+    warmCacheForSymbols(activeSymbols, ["1d"]).catch(err =>
       console.error("[DailyCache] Background warming error:", err)
     );
     const result = {
       success: true,
-      message: `K线缓存预热已启动，共 ${allSymbols.length} 只股票`,
-      stats: { total: allSymbols.length },
+      message: `K线缓存预热已启动，共 ${activeSymbols.length} 只活跃股票`,
+      stats: { total: activeSymbols.length, excluded: excludedSet.size },
     };
     await logSystemTask("daily-cache", true, result.message, result.stats);
     await notifyOwner({
       title: `📦 K线缓存预热已启动 - ${new Date().toLocaleDateString("zh-CN")}`,
-      content: `已开始预热 ${allSymbols.length} 只股票的日线数据，将在后台自动完成。`,
+      content: `已开始预热 ${activeSymbols.length} 只活跃股票的日线数据，将在后台自动完成。`,
     }).catch(e => console.error("[Notify] Failed:", e));
     return result;
   } catch (err: any) {
     const msg = err.message || "缓存预热启动失败";
+    console.error("[DailyCache] Error:", err);
     await logSystemTask("daily-cache", false, msg, {});
     return { success: false, message: msg, stats: {} };
   }
