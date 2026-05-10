@@ -804,8 +804,25 @@ export const appRouter = router({
             }).onDuplicateKeyUpdate({ set: { reason: 'user_request' } });
             removedFailedSymbols.add(symbol);
           }
-          console.log(`[Cache] Removed symbols from failed list: ${input.symbols.join(", ")}`);
-          return { message: `已删除 ${input.symbols.length} 只股票` };
+          
+          // Auto-clean related data from all affected tables
+          for (const symbol of input.symbols) {
+            try {
+              // Clean from scan results
+              await db.execute(sql`DELETE FROM scan_results WHERE symbol = ${symbol}`);
+              // Clean from backtest trades
+              await db.execute(sql`DELETE FROM backtest_trades WHERE symbol = ${symbol}`);
+              // Clean from cache metadata
+              await db.execute(sql`DELETE FROM cache_metadata WHERE symbol = ${symbol}`);
+              // Clean from market cap cache if exists
+              await db.execute(sql`DELETE FROM market_cap_cache WHERE symbol = ${symbol}`).catch(() => {});
+            } catch (cleanErr) {
+              console.warn(`[Cache] Cleanup warning for symbol ${symbol}:`, cleanErr instanceof Error ? cleanErr.message : String(cleanErr));
+            }
+          }
+          
+          console.log(`[Cache] Removed symbols from failed list and cleaned related data: ${input.symbols.join(", ")}`);
+          return { message: `已删除 ${input.symbols.length} 只股票及相关数据` };
         } catch (err) {
           console.error("[Cache] Failed to remove symbols:", err);
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "删除失败" });
@@ -1233,12 +1250,24 @@ export const appRouter = router({
             await db.execute(sql`UPDATE scan_jobs SET progress=${done}, total=${total}, currentSymbol=${symbol}, message=${'扫描中 (' + done + '/' + total + ')...'} WHERE id=${jobId}`).catch(() => {});
           }
           getIO()?.emit("scan:progress", { jobId, done, total, percent: Math.round((done / total) * 100), currentSymbol: symbol });
-        }).then(async signals => {
+         }).then(async signals => {
+          // Check if job was cancelled
+          const globalCancelledJobs = (globalThis as any).__cancelledScanJobs || new Set<number>();
+          if (globalCancelledJobs.has(jobId)) {
+            globalCancelledJobs.delete(jobId);
+            (globalThis as any).__cancelledScanJobs = globalCancelledJobs;
+            console.log(`[Scan] Job ${jobId} was cancelled, not saving results`);
+            return;
+          }
           await saveScanResults(signals).catch(console.error);
-          await db.execute(sql`UPDATE scan_jobs SET status='done', progress=${signals.length}, message=${"扫描完成，共 " + signals.length + " 个信号"}, resultCount=${signals.length}, completedAt=NOW() WHERE id=${jobId}`).catch(() => {});
+          await db.execute(sql`UPDATE scan_jobs SET status='done', progress=${signals.length}, message=${'扫描完成，共 ' + signals.length + ' 个信号'}, resultCount=${signals.length}, completedAt=NOW() WHERE id=${jobId}`).catch(() => {});
           getIO()?.emit("scan:progress", { jobId, done: activeCount, total: activeCount, percent: 100, status: "done", resultCount: signals.length });
         }).catch(async (err) => {
-          await db.execute(sql`UPDATE scan_jobs SET status='error', message=${String(err)} WHERE id=${jobId}`).catch(() => {});
+          // Check if job was cancelled
+          const globalCancelledJobs = (globalThis as any).__cancelledScanJobs || new Set<number>();
+          if (!globalCancelledJobs.has(jobId)) {
+            await db.execute(sql`UPDATE scan_jobs SET status='error', message=${String(err)} WHERE id=${jobId}`).catch(() => {});
+          }
         });
         return { started: true, jobId, message: "扫描已启动，可离开页面，结果将自动保存" };
       }),
@@ -1278,6 +1307,30 @@ export const appRouter = router({
         createdAt: row.createdAt, completedAt: row.completedAt,
       };
     }),
+    // Cancel an ongoing scan
+    cancelScan: protectedProcedure
+      .input(z.object({ jobId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        
+        // Verify the job belongs to the current user
+        const rows = await db.execute(sql`SELECT userId, status FROM scan_jobs WHERE id=${input.jobId} LIMIT 1`) as any;
+        const row = (rows[0] as any[])?.[0];
+        if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Scan job not found" });
+        if (row.userId !== ctx.user!.id) throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to cancel this scan" });
+        if (row.status !== 'running') throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot cancel a scan that is not running" });
+        
+        // Mark the job as cancelled
+        await db.execute(sql`UPDATE scan_jobs SET status='cancelled', message='用户已取消扫描' WHERE id=${input.jobId}`).catch(() => {});
+        
+        // Store the cancellation flag in a global set (for in-progress scans)
+        const globalCancelledJobs = (globalThis as any).__cancelledScanJobs || new Set<number>();
+        globalCancelledJobs.add(input.jobId);
+        (globalThis as any).__cancelledScanJobs = globalCancelledJobs;
+        
+        return { success: true, message: "扫描已取消" };
+      }),
 
     // Get scan results with filters
     getResults: publicProcedure

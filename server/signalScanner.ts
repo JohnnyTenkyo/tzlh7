@@ -234,7 +234,8 @@ export function analyzeStock(
  */
 export async function scanStockPool(
   options: ScanOptions = {},
-  onProgress?: (done: number, total: number, symbol: string) => void
+  onProgress?: (done: number, total: number, symbol: string) => void,
+  jobId?: number
 ): Promise<StockSignal[]> {
   const {
     strategies = ["standard", "aggressive", "ladder_cd_combo", "mean_reversion", "macd_volume", "bollinger_squeeze", "vamr", "rsi_reversal"],
@@ -272,6 +273,16 @@ export async function scanStockPool(
   let done = 0;
 
   while (queue.length > 0) {
+    // Check if scan was cancelled
+    if (jobId) {
+      const globalCancelledJobs = (globalThis as any).__cancelledScanJobs || new Set<number>();
+      if (globalCancelledJobs.has(jobId)) {
+        console.log(`[Scan] Job ${jobId} cancelled by user`);
+        globalCancelledJobs.delete(jobId);
+        break;
+      }
+    }
+
     const batch = queue.splice(0, CONCURRENT);
     await Promise.all(batch.map(async (stock) => {
       try {

@@ -1,4 +1,3 @@
-import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +15,7 @@ import { SECTOR_LABELS, MARKET_CAP_TIER_LABELS } from "@shared/stockPool";
 import type { StockSector, MarketCapTier } from "@shared/stockPool";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ScanHistoryViewer } from "@/components/ScanHistoryViewer";
+import { trpc } from "@/lib/trpc";
 
 const STRATEGY_LABELS: Record<string, string> = {
   standard: "标准策略",
@@ -69,6 +69,7 @@ export default function TodayScanPage() {
   const [sortBy, setSortBy] = useState<"score" | "symbol" | "rsi">("score");
   const [scanning, setScanning] = useState(false);
   const [activeJobId, setActiveJobId] = useState<number | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const { data: scanData, refetch, isLoading } = trpc.scan.getResults.useQuery({
     strategies: selectedStrategies as any,
@@ -127,6 +128,20 @@ export default function TodayScanPage() {
     onError: (e) => { toast.error(e.message); setScanning(false); },
   });
 
+  const cancelScan = trpc.scan.cancelScan.useMutation({
+    onSuccess: () => {
+      toast.success("扫描已取消");
+      setScanning(false);
+      setCancelling(false);
+      setActiveJobId(null);
+      refetch();
+    },
+    onError: (e) => {
+      toast.error("取消失败: " + e.message);
+      setCancelling(false);
+    },
+  });
+
   const handleStartScan = () => {
     if (!isAuthenticated) { toast.error("请先登录"); return; }
     setScanning(true);
@@ -137,6 +152,12 @@ export default function TodayScanPage() {
       minScore,
       signalType: signalTypeFilter !== "all" ? signalTypeFilter : undefined,
     });
+  };
+
+  const handleCancelScan = () => {
+    if (!activeJobId) return;
+    setCancelling(true);
+    cancelScan.mutate({ jobId: activeJobId });
   };
 
   const results = scanData?.results || [];
@@ -225,9 +246,20 @@ export default function TodayScanPage() {
               <span className="text-muted-foreground font-mono">{jobProgress?.percent ?? 0}%</span>
             </div>
             <Progress value={jobProgress?.percent ?? 0} className="h-2" />
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span>当前：{jobProgress?.currentSymbol || '—'}</span>
-              <span className="text-green-500/80">✓ 可离开此页面，扫描将在后台继续运行</span>
+              <div className="flex items-center gap-2">
+                <span className="text-green-500/80">✓ 可离开此页面，扫描将在后台继续运行</span>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleCancelScan}
+                  disabled={cancelling}
+                  className="h-6 px-2 text-xs"
+                >
+                  {cancelling ? '取消中...' : '取消扫描'}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
