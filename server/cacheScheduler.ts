@@ -140,14 +140,22 @@ function shouldRunDailyTask(hour: number, lastRunDate: Date | null): boolean {
   const now = new Date();
   const currentHour = now.getUTCHours();
   const currentDate = now.getUTCDate();
+  const currentMonth = now.getUTCMonth();
+  const currentYear = now.getUTCFullYear();
 
   // 检查是否在目标小时内
   if (currentHour !== hour) return false;
 
-  // 检查是否已在今天运行过
+  // 检查是否已在今天运行过（需要比较年月日）
   if (lastRunDate) {
     const lastRunDateUTC = lastRunDate.getUTCDate();
-    if (lastRunDateUTC === currentDate) return false;
+    const lastRunMonthUTC = lastRunDate.getUTCMonth();
+    const lastRunYearUTC = lastRunDate.getUTCFullYear();
+    
+    // 如果上次运行是同一天，则不再运行
+    if (lastRunYearUTC === currentYear && lastRunMonthUTC === currentMonth && lastRunDateUTC === currentDate) {
+      return false;
+    }
   }
 
   return true;
@@ -171,9 +179,9 @@ export async function startCacheScheduler() {
 
       const now = new Date();
 
-      // 检查每日 K 线缓存任务（UTC 09:00）
-      if (shouldRunDailyTask(9, lastDailyCacheRun)) {
-        console.log("[CacheScheduler] Running daily cache warming task at UTC 09:00");
+      // 检查每日 K 线缓存任务（UTC 12:00 = 美东时间 08:00 AM）
+      if (shouldRunDailyTask(12, lastDailyCacheRun)) {
+        console.log("[CacheScheduler] Running daily cache warming task at UTC 12:00 (08:00 AM EST)");
         lastDailyCacheRun = now;
         try {
           const result = await handleDailyCacheScheduled();
@@ -183,9 +191,9 @@ export async function startCacheScheduler() {
         }
       }
 
-      // 检查每日全量扫描任务（UTC 14:00）
-      if (shouldRunDailyTask(14, lastDailyScanRun)) {
-        console.log("[CacheScheduler] Running daily scan task at UTC 14:00");
+      // 检查每日全量扫描任务（UTC 13:00 = 美东时间 09:00 AM）
+      if (shouldRunDailyTask(13, lastDailyScanRun)) {
+        console.log("[CacheScheduler] Running daily scan task at UTC 13:00 (09:00 AM EST)");
         lastDailyScanRun = now;
         try {
           const result = await handleDailyScanScheduled();
@@ -193,6 +201,8 @@ export async function startCacheScheduler() {
         } catch (err) {
           console.error("[CacheScheduler] Daily scan error:", err);
         }
+      } else if (now.getUTCHours() === 13) {
+        console.log("[CacheScheduler] UTC 13:00 reached but task already ran today. lastDailyScanRun:", lastDailyScanRun);
       }
 
       // 处理用户自定义的定时任务
