@@ -198,7 +198,7 @@ export async function startCacheScheduler() {
       }
       
       if (shouldRunDailyTask(12, lastDailyCacheRun)) {
-        console.log("[CacheScheduler] Running daily cache warming task at UTC 12:00 (08:00 AM EST)");
+        console.log("[CacheScheduler] Running daily cache warming task at UTC 12:00 (08:00 AM EDT)");
         lastDailyCacheRun = now;
         try {
           const result = await handleDailyCacheScheduled();
@@ -208,9 +208,9 @@ export async function startCacheScheduler() {
         }
       }
 
-      // 检查每日全量扫描任务（UTC 13:00 = 美东时间 09:00 AM）
-      if (shouldRunDailyTask(13, lastDailyScanRun)) {
-        console.log("[CacheScheduler] Running daily scan task at UTC 13:00 (09:00 AM EST)");
+      // 检查每日全量扫描任务（UTC 10:00 = 美东时间 06:00 AM）
+      if (shouldRunDailyTask(10, lastDailyScanRun)) {
+        console.log("[CacheScheduler] Running daily scan task at UTC 10:00 (06:00 AM EDT)");
         lastDailyScanRun = now;
         try {
           const result = await handleDailyScanScheduled();
@@ -218,8 +218,8 @@ export async function startCacheScheduler() {
         } catch (err) {
           console.error("[CacheScheduler] Daily scan error:", err);
         }
-      } else if (now.getUTCHours() === 13) {
-        console.log("[CacheScheduler] UTC 13:00 reached but task already ran today. lastDailyScanRun:", lastDailyScanRun);
+      } else if (now.getUTCHours() === 10) {
+        console.log("[CacheScheduler] UTC 10:00 reached but task already ran today. lastDailyScanRun:", lastDailyScanRun);
       }
 
       // 处理用户自定义的定时任务
