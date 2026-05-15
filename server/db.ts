@@ -7,18 +7,31 @@ import bcrypt from "bcryptjs";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: mysql.Pool | null = null;
+let _connectionFailed = false;
+let _lastConnectionAttempt = 0;
+const CONNECTION_RETRY_INTERVAL = 5000; // 每 5 秒重试一次
 
 // 使用连接池而不是单一连接，支持自动重连
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
+    const now = Date.now();
+    
+    // 如果上次连接失败，且轮询间隔未到，不再尝试
+    if (_connectionFailed && now - _lastConnectionAttempt < CONNECTION_RETRY_INTERVAL) {
+      return null;
+    }
+    
     try {
+      _lastConnectionAttempt = now;
       if (!_pool) {
         _pool = mysql.createPool(process.env.DATABASE_URL);
       }
       _db = drizzle(_pool) as any;
+      _connectionFailed = false;
       console.log("[Database] Connected successfully with connection pool");
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
+      _connectionFailed = true;
       _db = null;
       _pool = null;
     }

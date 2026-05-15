@@ -135,9 +135,10 @@ async function executeWarmingTask(
 /**
  * 检查是否应该在指定的 UTC 小时执行每日任务
  * 每天只执行一次，避免重复执行
+ * 支持测试时间注入
  */
-function shouldRunDailyTask(hour: number, lastRunDate: Date | null): boolean {
-  const now = new Date();
+function shouldRunDailyTask(hour: number, lastRunDate: Date | null, testNow?: Date): boolean {
+  const now = testNow || new Date();
   const currentHour = now.getUTCHours();
   const currentDate = now.getUTCDate();
   const currentMonth = now.getUTCMonth();
@@ -170,16 +171,32 @@ let lastDailyScanRun: Date | null = null;
  */
 export async function startCacheScheduler() {
   console.log("[CacheScheduler] Started");
+  
+  // 第一次立即检查一次
+  console.log("[CacheScheduler] Initial check - lastDailyScanRun:", lastDailyScanRun, "lastDailyCacheRun:", lastDailyCacheRun);
 
   // 每分钟检查一次
-  setInterval(async () => {
+  const intervalId = setInterval(async () => {
     try {
       const db = await getDb();
-      if (!db) return;
+      if (!db) {
+        console.warn("[CacheScheduler] Database connection failed");
+        return;
+      }
+      
+      // 每次都记录（不管是否执行任务）
+      console.log("[CacheScheduler] Loop iteration at", new Date().toISOString());
 
       const now = new Date();
+      const utcHour = now.getUTCHours();
+      const utcMinute = now.getUTCMinutes();
 
       // 检查每日 K 线缓存任务（UTC 12:00 = 美东时间 08:00 AM）
+      // 每小时记录一次状态
+      if (utcMinute === 0) {
+        console.log(`[CacheScheduler] Hourly check at UTC ${utcHour}:${String(utcMinute).padStart(2, '0')} - lastDailyScanRun: ${lastDailyScanRun?.toISOString() || 'null'}, lastDailyCacheRun: ${lastDailyCacheRun?.toISOString() || 'null'}`);
+      }
+      
       if (shouldRunDailyTask(12, lastDailyCacheRun)) {
         console.log("[CacheScheduler] Running daily cache warming task at UTC 12:00 (08:00 AM EST)");
         lastDailyCacheRun = now;
@@ -229,6 +246,8 @@ export async function startCacheScheduler() {
       console.error("[CacheScheduler] Error in scheduler loop:", err);
     }
   }, 60000); // 每 60 秒检查一次
+  
+  console.log("[CacheScheduler] Interval started with ID:", intervalId);
 }
 
 /**
