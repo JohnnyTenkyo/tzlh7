@@ -366,3 +366,19 @@ export const marketCapUpdateLog = mysqlTable("market_cap_update_log", {
 
 export type MarketCapUpdateLog = typeof marketCapUpdateLog.$inferSelect;
 export type InsertMarketCapUpdateLog = typeof marketCapUpdateLog.$inferInsert;
+
+// ============================================================
+// System Configuration (系统配置)
+// ============================================================
+export const systemConfig = mysqlTable("system_config", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("idx_key").on(table.key),
+]);
+
+export type SystemConfig = typeof systemConfig.$inferSelect;
+export type InsertSystemConfig = typeof systemConfig.$inferInsert;

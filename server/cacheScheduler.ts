@@ -1,8 +1,9 @@
-import { getDb, getEnabledScheduledTasks, updateScheduledTaskExecution, recordWarmingProgress, updateWarmingStats } from "./db";
+import { getDb, getEnabledScheduledTasks, updateScheduledTaskExecution, recordWarmingProgress, updateWarmingStats, getNextExecutionTime } from "./db";
 import { filterStocks, STOCK_POOL } from "@shared/stockPool";
 import { getCandlesWithCache } from "./cacheManager";
 import { handleDailyScanScheduled, handleDailyCacheScheduled } from "./routers";
 import type { Timeframe } from "./marketData";
+import { sql } from "drizzle-orm";
 
 /**
  * 简单的 cron 表达式解析器
@@ -166,6 +167,10 @@ function shouldRunDailyTask(hour: number, lastRunDate: Date | null, testNow?: Da
 let lastDailyCacheRun: Date | null = null;
 let lastDailyScanRun: Date | null = null;
 
+// 定时任务状态存储键
+const LAST_DAILY_SCAN_RUN_KEY = "scheduler:lastDailyScanRun";
+const LAST_DAILY_CACHE_RUN_KEY = "scheduler:lastDailyCacheRun";
+
 /**
  * 主调度循环 - 每分钟检查一次待执行的任务
  */
@@ -200,6 +205,7 @@ export async function startCacheScheduler() {
       if (shouldRunDailyTask(12, lastDailyCacheRun)) {
         console.log("[CacheScheduler] Running daily cache warming task at UTC 12:00 (08:00 AM EDT)");
         lastDailyCacheRun = now;
+        await saveScheduledTasksState(); // 保存状态
         try {
           const result = await handleDailyCacheScheduled();
           console.log("[CacheScheduler] Daily cache warming result:", result);
@@ -212,6 +218,7 @@ export async function startCacheScheduler() {
       if (shouldRunDailyTask(10, lastDailyScanRun)) {
         console.log("[CacheScheduler] Running daily scan task at UTC 10:00 (06:00 AM EDT)");
         lastDailyScanRun = now;
+        await saveScheduledTasksState(); // 保存状态
         try {
           const result = await handleDailyScanScheduled();
           console.log("[CacheScheduler] Daily scan result:", result);
@@ -251,10 +258,75 @@ export async function startCacheScheduler() {
 }
 
 /**
+ * 从数据库恢复上次执行时间
+ */
+async function restoreScheduledTasksState() {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    
+    // 尝试从数据库恢复状态
+    const rows = await db.execute(sql`
+      SELECT \`key\`, \`value\` FROM system_config 
+      WHERE \`key\` IN (${LAST_DAILY_SCAN_RUN_KEY}, ${LAST_DAILY_CACHE_RUN_KEY})
+    `) as any;
+    
+    for (const row of rows) {
+      if (row.key === LAST_DAILY_SCAN_RUN_KEY && row.value) {
+        lastDailyScanRun = new Date(row.value);
+        console.log("[CacheScheduler] Restored lastDailyScanRun:", lastDailyScanRun.toISOString());
+      } else if (row.key === LAST_DAILY_CACHE_RUN_KEY && row.value) {
+        lastDailyCacheRun = new Date(row.value);
+        console.log("[CacheScheduler] Restored lastDailyCacheRun:", lastDailyCacheRun.toISOString());
+      }
+    }
+  } catch (err) {
+    console.warn("[CacheScheduler] Failed to restore state:", err);
+  }
+}
+
+/**
+ * 保存定时任务状态到数据库
+ */
+async function saveScheduledTasksState() {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    
+    const updates = [];
+    if (lastDailyScanRun) {
+      updates.push({
+        key: LAST_DAILY_SCAN_RUN_KEY,
+        value: lastDailyScanRun.toISOString(),
+      });
+    }
+    if (lastDailyCacheRun) {
+      updates.push({
+        key: LAST_DAILY_CACHE_RUN_KEY,
+        value: lastDailyCacheRun.toISOString(),
+      });
+    }
+    
+    for (const update of updates) {
+      await db.execute(sql`
+        INSERT INTO system_config (\`key\`, \`value\`) 
+        VALUES (${update.key}, ${update.value})
+        ON DUPLICATE KEY UPDATE \`value\` = ${update.value}
+      `).catch(err => console.warn("[CacheScheduler] Failed to save state:", err));
+    }
+  } catch (err) {
+    console.warn("[CacheScheduler] Failed to save state:", err);
+  }
+}
+
+/**
  * 初始化所有任务的下次执行时间（应在服务器启动时调用）
  */
 export async function initializeScheduledTasks() {
   try {
+    // 先恢复之前的状态
+    await restoreScheduledTasksState();
+    
     const db = await getDb();
     if (!db) return;
 
