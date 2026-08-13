@@ -14,7 +14,7 @@ const tables = [
     sql: `CREATE TABLE IF NOT EXISTS \`scan_jobs\` (
       \`id\` int AUTO_INCREMENT NOT NULL,
       \`userId\` int NOT NULL,
-      \`status\` enum('running','done','error') NOT NULL DEFAULT 'running',
+      \`status\` enum('running','done','error','cancelled') NOT NULL DEFAULT 'running',
       \`progress\` int NOT NULL DEFAULT 0,
       \`total\` int NOT NULL DEFAULT 0,
       \`currentSymbol\` varchar(20),

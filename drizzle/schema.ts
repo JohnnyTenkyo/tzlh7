@@ -294,6 +294,28 @@ export type ScanResult = typeof scanResults.$inferSelect;
 export type InsertScanResult = typeof scanResults.$inferInsert;
 
 // ============================================================
+// Scan Jobs (全量扫描任务进度)
+// ============================================================
+export const scanJobs = mysqlTable("scan_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  status: mysqlEnum("status", ["running", "done", "error", "cancelled"]).default("running").notNull(),
+  progress: int("progress").default(0).notNull(),
+  total: int("total").default(0).notNull(),
+  currentSymbol: varchar("currentSymbol", { length: 20 }),
+  strategies: json("strategies").$type<string[]>(),
+  message: text("message"),
+  resultCount: int("resultCount").default(0),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("idx_scan_jobs_user_created").on(table.userId, table.createdAt),
+]);
+
+export type ScanJob = typeof scanJobs.$inferSelect;
+export type InsertScanJob = typeof scanJobs.$inferInsert;
+
+// ============================================================
 // Data Source Priority (用户自定义数据源优先级)
 // ============================================================
 export const dataSourcePriority = mysqlTable("data_source_priority", {
